@@ -13,18 +13,46 @@ function blockchainTodo(id, functionName) {
   throw error;
 }
 
-// TODO [BLOCKCHAIN-01]
-// Goal: connect to MetaMask and return the user's real wallet information.
-// Learn/use: ethers.BrowserProvider(window.ethereum), provider.send() or the
-// wallet's account request, provider.getSigner(), and signer.getAddress().
-// Input: none. Output: an object such as { address, chainId } made from real
-// wallet data; do not invent a value when no account is available.
-// UI state: app.js should set walletAddress, chainId, and isConnected from that
-// result, then render and move on to network checking/data loading.
-// Avoid: assuming MetaMask exists, exposing a private key, requesting accounts
-// repeatedly, or treating a rejected request as a successful connection.
+let contract = null;
+let provider = null;
+let signer = null;
+let address = null;
+let network = null;
+
 async function connectWallet() {
-  return blockchainTodo("BLOCKCHAIN-01", "connectWallet");
+  if (!window.ethereum) {
+    alert("Vui lòng cài đặt MetaMask!");
+    return;
+  }
+
+  try {
+    await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    provider = new ethers.BrowserProvider(window.ethereum); // Tạo đối tượng provider
+    signer = await provider.getSigner(); // Lấy đối tượng Signer
+    address = await signer.getAddress(); // Lấy address
+    network = await provider.getNetwork();
+
+    console.log("Địa chỉ ví:", address);
+
+    const chainId = await checkNetwork();
+
+    if (chainId === APP_CONFIG.FUJI.chainId) {
+      await initializeContract();
+      const escrowData = await loadEscrowData();
+      console.log("Escrow data:", escrowData);
+      window.MiniEscrowUI.updateEscrowData(escrowData);
+    }
+
+    return {
+      address,
+      chainId,
+    };
+  } catch (error) {
+    console.error("Không thể kết nối ví:", error);
+  }
 }
 
 // TODO [BLOCKCHAIN-02]
@@ -36,7 +64,16 @@ async function connectWallet() {
 // Avoid: comparing bigint to a string, silently switching networks, or marking
 // Fuji active before the provider confirms it.
 async function checkNetwork() {
-  return blockchainTodo("BLOCKCHAIN-02", "checkNetwork");
+  network = await provider.getNetwork();
+  const chainId = Number(network.chainId);
+
+  if (chainId === APP_CONFIG.FUJI.chainId) {
+    console.log("Đã kết nối Avalanche Fuji");
+  } else {
+    console.log("Sai mạng, hãy chuyển sang Avalanche Fuji");
+  }
+
+  return chainId;
 }
 
 // TODO [BLOCKCHAIN-03]
@@ -48,7 +85,18 @@ async function checkNetwork() {
 // Avoid: using an empty/invalid address, the wrong ABI/network, or a provider
 // when a signer is required for write functions.
 async function initializeContract() {
-  return blockchainTodo("BLOCKCHAIN-03", "initializeContract");
+  // Kiểm tra số dư
+  const balance = await provider.getBalance(address);
+  console.log("Số dư:", ethers.formatEther(balance), "AVAX");
+
+  // Tạo đối tượng contract để tác động nó
+  contract = new ethers.Contract(
+    APP_CONFIG.CONTRACT_ADDRESS,
+    APP_CONFIG.CONTRACT_ABI,
+    signer,
+  );
+
+  return contract;
 }
 
 // TODO [BLOCKCHAIN-04]
@@ -61,7 +109,25 @@ async function initializeContract() {
 // Avoid: losing bigint precision, displaying wei as AVAX, guessing enum values,
 // or replacing a failed read with mock data.
 async function loadEscrowData() {
-  return blockchainTodo("BLOCKCHAIN-04", "loadEscrowData");
+  if (!contract) {
+    throw new Error("Vui lòng kết nối ví trước!");
+  }
+
+  const buyer = await contract.buyer();
+  const seller = await contract.seller();
+  const amount = await contract.amount();
+  const status = await contract.status();
+  const refundApproved = await contract.refundApproved();
+
+  const statuses = ["Created", "Funded", "Released", "Refunded"];
+
+  return {
+    buyer,
+    seller,
+    amount: ethers.formatEther(amount),
+    status: statuses[Number(status)],
+    refundApproved,
+  };
 }
 
 // TODO [BLOCKCHAIN-05]
@@ -73,8 +139,18 @@ async function loadEscrowData() {
 // Avoid: JavaScript floating-point conversion, sending zero/negative amounts,
 // duplicate submits, calling as the seller, or claiming success before tx.wait().
 async function depositAVAX(amount) {
-  void amount;
-  return blockchainTodo("BLOCKCHAIN-05", "depositAVAX");
+  if (!contract) {
+    throw new Error("Vui lòng kết nối ví trước!");
+  }
+
+  const tx = await contract.deposit({ value: ethers.parseEther(amount) });
+  const receipt = await tx.wait();
+
+  const escrowData = await loadEscrowData();
+  window.MiniEscrowUI.updateEscrowData(escrowData);
+  console.log("Deposit thành công!", receipt);
+
+  return receipt;
 }
 
 // TODO [BLOCKCHAIN-06]
@@ -85,7 +161,18 @@ async function depositAVAX(amount) {
 // confirmation only after mining.
 // Avoid: enabling for non-buyers/wrong status or assuming submission equals finality.
 async function releasePayment() {
-  return blockchainTodo("BLOCKCHAIN-06", "releasePayment");
+  if (!contract) {
+    throw new Error("Vui lòng kết nối ví trước!");
+  }
+
+  const tx = await contract.releasePayment();
+  const receipt = await tx.wait();
+
+  const escrowData = await loadEscrowData();
+  window.MiniEscrowUI.updateEscrowData(escrowData);
+  console.log("Release thành công!", receipt);
+
+  return receipt;
 }
 
 // TODO [BLOCKCHAIN-07]
@@ -95,7 +182,18 @@ async function releasePayment() {
 // UI state: reload data so the buyer's Refund button reflects the real approval.
 // Avoid: changing local approval before confirmation or allowing the buyer to call it.
 async function approveRefund() {
-  return blockchainTodo("BLOCKCHAIN-07", "approveRefund");
+  if (!contract) {
+    throw new Error("Vui lòng kết nối ví trước!");
+  }
+
+  const tx = await contract.approveRefund();
+  const receipt = await tx.wait();
+
+  const escrowData = await loadEscrowData();
+  window.MiniEscrowUI.updateEscrowData(escrowData);
+  console.log("Approve refund thành công!", receipt);
+
+  return receipt;
 }
 
 // TODO [BLOCKCHAIN-08]
@@ -105,7 +203,18 @@ async function approveRefund() {
 // UI state: reload escrow data, clear pending state, and show real confirmation.
 // Avoid: refunding before approval, calling as seller, or displaying a fake hash.
 async function refundPayment() {
-  return blockchainTodo("BLOCKCHAIN-08", "refundPayment");
+  if (!contract) {
+    throw new Error("Vui lòng kết nối ví trước!");
+  }
+
+  const tx = await contract.refund();
+  const receipt = await tx.wait();
+
+  const escrowData = await loadEscrowData();
+  window.MiniEscrowUI.updateEscrowData(escrowData);
+  console.log("refund thành công!", receipt);
+
+  return receipt;
 }
 
 // TODO [BLOCKCHAIN-09]
@@ -114,9 +223,53 @@ async function refundPayment() {
 // Input: accounts array. Output: none; empty means disconnected.
 // UI state: update/reset wallet address and connection state, then reload escrow
 // data for a real new account. Avoid retaining the prior user's role or values.
-function handleAccountsChanged(accounts) {
-  void accounts;
-  return blockchainTodo("BLOCKCHAIN-09", "handleAccountsChanged");
+async function handleAccountsChanged(accounts) {
+  // 1. Người dùng ngắt kết nối
+  if (accounts.length === 0) {
+    address = null;
+    signer = null;
+    contract = null;
+
+    window.MiniEscrowUI.updateWalletState({
+      address: null,
+      chainId: null,
+    });
+
+    window.MiniEscrowUI.resetEscrowData();
+    return;
+  }
+
+  // 2. Người dùng đổi sang tài khoản khác
+  try {
+    if (!provider) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    }
+
+    signer = await provider.getSigner(accounts[0]);
+    address = await signer.getAddress();
+
+    const chainId = Number((await provider.getNetwork()).chainId);
+    network = await provider.getNetwork();
+
+    contract = null;
+    window.MiniEscrowUI.resetEscrowData();
+
+    window.MiniEscrowUI.updateWalletState({
+      address,
+      chainId,
+    });
+
+    // 3. Khởi tạo lại contract với signer mới
+    if (chainId === APP_CONFIG.FUJI.chainId) {
+      await initializeContract();
+
+      // 4. Tải lại dữ liệu từ blockchain
+      const escrowData = await loadEscrowData();
+      window.MiniEscrowUI.updateEscrowData(escrowData);
+    }
+  } catch (error) {
+    console.error("Lỗi khi đổi tài khoản:", error);
+  }
 }
 
 // TODO [BLOCKCHAIN-10]
@@ -126,10 +279,50 @@ function handleAccountsChanged(accounts) {
 // Input: chainId hex string. Output: none.
 // UI state: update chainId, clear stale contract data, initialize/load only on Fuji.
 // Avoid: treating hex "0xa869" as decimal or keeping data from another network.
-function handleChainChanged(chainId) {
-  void chainId;
-  return blockchainTodo("BLOCKCHAIN-10", "handleChainChanged");
+async function handleChainChanged(chainId) {
+  const newChainId = Number(chainId);
+  contract = null;
+  signer = null;
+  provider = null;
+  network = null;
+
+  window.MiniEscrowUI.updateWalletState({
+    address,
+    chainId: newChainId,
+  });
+
+  window.MiniEscrowUI.resetEscrowData();
+
+  // Chỉ khởi tạo contract trên Avalanche Fuji
+  if (newChainId === APP_CONFIG.FUJI.chainId && address) {
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner(address);
+      network = await provider.getNetwork();
+
+      await initializeContract();
+
+      const escrowData = await loadEscrowData();
+      window.MiniEscrowUI.updateEscrowData(escrowData);
+    } catch (error) {
+      console.error("Lỗi khi chuyển mạng:", error);
+    }
+  }
 }
 
-window.MiniEscrowBlockchain = Object.freeze({connectWallet,checkNetwork,initializeContract,loadEscrowData,depositAVAX,releasePayment,approveRefund,refundPayment,handleAccountsChanged,handleChainChanged});
+window.MiniEscrowBlockchain = Object.freeze({
+  connectWallet,
+  checkNetwork,
+  initializeContract,
+  loadEscrowData,
+  depositAVAX,
+  releasePayment,
+  approveRefund,
+  refundPayment,
+  handleAccountsChanged,
+  handleChainChanged,
+});
 
+if (window.ethereum) {
+  window.ethereum.on("accountsChanged", handleAccountsChanged);
+}
