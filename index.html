@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A focused interface for the Mini Escrow contract on Avalanche Fuji.">
+  <title>Mini Escrow — Avalanche Fuji</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Mini Escrow home">
+      <span class="brand-mark"><i data-lucide="shield-check"></i></span>
+      <span><b>Mini Escrow</b><small>Trust, made verifiable.</small></span>
+    </a>
+    <div class="wallet-cluster">
+      <div class="network-pill" id="networkPill"><span class="status-dot"></span><span>Fuji Testnet</span></div>
+      <button class="wallet-button" id="connectWalletButton" type="button"><i data-lucide="wallet"></i><span>Connect wallet</span></button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow"><span></span> Avalanche-native settlement</div>
+        <h1>One agreement.<br><em>Zero ambiguity.</em></h1>
+        <p>A clear, secure workspace for buyers and sellers to fund, release, or refund a single on-chain agreement.</p>
+      </div>
+      <div class="connection-card" id="connectionCard">
+        <div class="connection-icon"><i data-lucide="unplug"></i></div>
+        <div><small>Wallet status</small><strong id="walletStatusText">Not connected</strong><span id="walletRoleText">Connect to identify your role</span></div>
+      </div>
+    </section>
+
+    <section class="overview-card panel">
+      <div class="section-heading">
+        <div><span class="overline">Escrow overview</span><h2>Agreement details</h2></div>
+        <span class="status-badge neutral" id="escrowStatusBadge"><span></span><b>Awaiting data</b></span>
+      </div>
+      <div class="overview-grid">
+        <div class="amount-block"><small>Amount secured</small><div><strong id="escrowAmount">—</strong><span>AVAX</span></div><p id="amountCaption">Connect your wallet to load the contract</p></div>
+        <div class="details-grid">
+          <div class="detail-item"><span><i data-lucide="shopping-bag"></i>Buyer</span><code id="buyerAddress">—</code></div>
+          <div class="detail-item"><span><i data-lucide="store"></i>Seller</span><code id="sellerAddress">—</code></div>
+          <div class="detail-item"><span><i data-lucide="rotate-ccw"></i>Refund approval</span><strong id="refundApproval">—</strong></div>
+          <div class="detail-item"><span><i data-lucide="file-code-2"></i>Contract</span><div class="contract-value"><code id="contractAddress">Not configured</code><a id="explorerLink" class="icon-link disabled" href="#" aria-label="View contract on Snowtrace"><i data-lucide="external-link"></i></a></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lifecycle panel">
+      <div class="section-heading compact"><div><span class="overline">Live progression</span><h2>Escrow lifecycle</h2></div><i class="heading-icon" data-lucide="route"></i></div>
+      <div class="timeline" id="escrowTimeline">
+        <div class="timeline-step" data-status="Created"><span class="step-node"><i data-lucide="file-plus-2"></i></span><div><b>Created</b><small>Agreement deployed</small></div></div>
+        <span class="timeline-line"></span>
+        <div class="timeline-step" data-status="Funded"><span class="step-node"><i data-lucide="landmark"></i></span><div><b>Funded</b><small>AVAX secured</small></div></div>
+        <span class="timeline-line branching"></span>
+        <div class="timeline-endings">
+          <div class="timeline-step" data-status="Released"><span class="step-node"><i data-lucide="circle-check"></i></span><div><b>Released</b><small>Seller paid</small></div></div>
+          <div class="timeline-step alternative" data-status="Refunded"><span class="step-node"><i data-lucide="undo-2"></i></span><div><b>Refunded</b><small>Buyer reimbursed</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="actions-grid">
+      <article class="action-card panel featured">
+        <div class="card-icon violet"><i data-lucide="arrow-down-to-line"></i></div><span class="overline">Buyer action</span><h3>Fund the escrow</h3><p>Deposit the agreed AVAX amount into the contract for safekeeping.</p>
+        <form id="depositForm" novalidate><label for="depositAmount">Amount</label><div class="amount-input"><input id="depositAmount" type="number" min="0" step="any" inputmode="decimal" placeholder="0.00"><span>AVAX</span></div><small class="form-message" id="depositMessage"></small><button class="primary-button" id="depositButton" type="submit" disabled><span>Deposit AVAX</span><i data-lucide="arrow-right"></i></button></form>
+      </article>
+      <article class="action-card panel">
+        <div class="card-icon cyan"><i data-lucide="send"></i></div><span class="overline">Buyer action</span><h3>Release payment</h3><p>Confirm the agreement is complete and send the secured funds to the seller.</p>
+        <div class="mini-summary"><span>Recipient</span><code id="releaseSeller">—</code><span>Amount</span><strong id="releaseAmount">— AVAX</strong></div>
+        <button class="secondary-button" id="releaseButton" type="button" disabled>Release payment <i data-lucide="arrow-up-right"></i></button>
+      </article>
+      <article class="action-card panel">
+        <div class="card-icon blue"><i data-lucide="refresh-cw"></i></div><span class="overline">Two-step protection</span><h3>Manage a refund</h3><p>The seller first approves. The buyer can then return the funds.</p>
+        <div class="approval-row"><div><span>Seller approval</span><strong id="refundCardStatus">Not loaded</strong></div><span class="approval-indicator" id="approvalIndicator"><i data-lucide="clock-3"></i></span></div>
+        <div class="button-pair"><button class="ghost-button" id="approveRefundButton" type="button" disabled>Approve refund</button><button class="secondary-button" id="refundButton" type="button" disabled>Refund buyer</button></div>
+      </article>
+    </section>
+
+    <footer><div class="brand-foot"><span class="brand-mark small"><i data-lucide="shield-check"></i></span><b>Mini Escrow</b></div><p>Built for Avalanche Fuji Testnet · Chain ID 43113</p><a href="https://build.avax.network/docs/dapps/smart-contract-dev/testnet-faucet" target="_blank" rel="noreferrer">Fuji resources <i data-lucide="external-link"></i></a></footer>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="modal-close" id="modalClose" aria-label="Close dialog"><i data-lucide="x"></i></button><div class="modal-icon"><i data-lucide="shield-alert"></i></div><h2 id="modalTitle">Confirm action</h2><p id="modalMessage"></p><div class="modal-note"><i data-lucide="info"></i><span id="modalNote">This action will require confirmation in your wallet.</span></div><div class="modal-actions"><button class="ghost-button" id="modalCancel">Cancel</button><button class="primary-button" id="modalConfirm">Confirm</button></div></div></div>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="js/config.js"></script><script src="js/blockchain.js"></script><script src="js/app.js"></script>
+</body>
+</html>
